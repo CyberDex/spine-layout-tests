@@ -17,12 +17,14 @@ const ASSETS_BASE = `${import.meta.env.BASE_URL}assets/`;
 async function main() {
   // Create and initialize the application.
   const app = new Application();
-  await app.init({ 
-    resizeTo: window ,
+
+  await app.init({
+    resizeTo: window,
     antialias: true,
     resolution: Math.min(window.devicePixelRatio, 2),
     autoDensity: true,
   });
+
   document.getElementById("pixi-container")!.appendChild(app.canvas);
 
   // ── 1. Load the AssetPack manifest and register it with Pixi's Assets ───────

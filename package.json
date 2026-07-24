@@ -7,9 +7,11 @@
     "start": "npm run dev",
     "build": "npm run lint && tsc && vite build",
     "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
     "dev": "vite",
     "build:spine-layout": "node scripts/build-spine-layout.mjs",
-    "prepare": "node scripts/build-spine-layout.mjs"
+    "prepare": "node scripts/build-spine-layout.mjs && (git config core.hooksPath .githooks || true)"
   },
   "dependencies": {
     "@esotericsoftware/spine-pixi-v8": "^4.3.7",
