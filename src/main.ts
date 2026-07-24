@@ -1,33 +1,68 @@
-import { Application, Assets, Sprite } from "pixi.js";
+import { Application, Assets, type AssetsManifest } from "pixi.js";
+import { SpineLayout } from "@pixijs-userland/spine-layout";
 
-// Create a new application
+// Where AssetPack emitted the processed assets + manifest (public/ is served at /).
+const ASSETS_BASE = "/assets/";
+
+// Create and initialize the application.
 const app = new Application();
-
-// Initialize the application
 await app.init({ background: "#1099bb", resizeTo: window });
-
-// Append the application canvas to the document body
 document.getElementById("pixi-container")!.appendChild(app.canvas);
 
-// Load the bunny texture
-const texture = await Assets.load("/assets/bunny.png");
+// ── 1. Load the AssetPack manifest and register it with Pixi's Assets ─────────
+// Fetch the manifest directly (not via Assets.load) so we can hand it to
+// Assets.init *before* anything else touches Assets — otherwise the first load
+// auto-initializes it without our basePath and every asset URL resolves wrong.
+const manifest = (await fetch(`${ASSETS_BASE}manifest.json`).then((r) =>
+  r.json(),
+)) as AssetsManifest;
 
-// Create a bunny Sprite
-const bunny = new Sprite(texture);
+await Assets.init({ manifest, basePath: ASSETS_BASE });
 
-// Center the sprite's anchor point
-bunny.anchor.set(0.5);
+// ── 2. Preload everything the scene needs up front ───────────────────────────
+// Pixi has no built-in audio loader, so we load only the assets Pixi understands
+// (spine skeletons/atlases, bitmap fonts, the texts settings). Sounds are picked
+// up straight from the manifest by spine-layout's Howler-backed Sounds controller.
+const preloadAliases = manifest.bundles
+  .flatMap((bundle) =>
+    Array.isArray(bundle.assets) ? bundle.assets : [bundle.assets],
+  )
+  .map((asset) => {
+    const alias = asset.alias;
+    return Array.isArray(alias) ? alias[0] : alias;
+  })
+  .filter(
+    (alias): alias is string =>
+      typeof alias === "string" && /\.(atlas|json|fnt)$/.test(alias),
+  );
 
-// Move the sprite to the center of the screen
-bunny.position.set(app.screen.width / 2, app.screen.height / 2);
+await Assets.load(preloadAliases);
 
-// Add the bunny to the stage
-app.stage.addChild(bunny);
+// ── 3. Build the scene from the manifest ─────────────────────────────────────
+// createInstancesFromManifest scans the manifest for .atlas / .json / .png
+// triplets, instantiates each spine (resolving aliases as `spines/<id>.<ext>`),
+// then wires the hierarchy from the slot-naming conventions in the skeletons.
+const layout = new SpineLayout({ debug: true });
+await layout.createInstancesFromManifest(manifest, "spines");
 
-// Listen for animate update
-app.ticker.add((time) => {
-  // Just for fun, let's rotate mr rabbit a little.
-  // * Delta is 1 if running at 100% performance *
-  // * Creates frame-independent transformation *
-  bunny.rotation += 0.1 * time.deltaTime;
-});
+app.stage.addChild(layout);
+
+// ── 4. Center and fit the composed scene to the viewport ─────────────────────
+// Scale purely to the scene height — the scene always fills the viewport height,
+// and width is left unconstrained (it may overflow horizontally off-screen).
+function fit() {
+  const bounds = layout.getLocalBounds();
+  if (!bounds.height) return;
+  const scale = app.screen.height / bounds.height;
+  layout.scale.set(scale);
+  layout.position.set(
+    app.screen.width / 2 - (bounds.x + bounds.width / 2) * scale,
+    app.screen.height / 2 - (bounds.y + bounds.height / 2) * scale,
+  );
+}
+
+fit();
+app.renderer.on("resize", fit);
+
+// Expose for quick console tinkering (playState / playEvent / texts / skins).
+(globalThis as unknown as { layout: SpineLayout }).layout = layout;
