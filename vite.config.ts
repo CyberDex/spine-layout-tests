@@ -57,7 +57,9 @@ function assetpackPlugin(): Plugin {
 }
 
 // https://vite.dev/config/
-export default defineConfig({
+export default defineConfig(({ command }) => ({
+  // Served from the repo subpath on GitHub Pages, from root in local dev.
+  base: command === "build" ? "/spine-layout-tests/" : "/",
   server: {
     port: 8080,
     open: true,
@@ -67,4 +69,4 @@ export default defineConfig({
     target: "esnext",
   },
   plugins: [assetpackPlugin()],
-});
+}));

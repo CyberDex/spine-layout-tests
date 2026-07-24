@@ -1,8 +1,10 @@
 import { Application, Assets, type AssetsManifest } from "pixi.js";
 import { SpineLayout } from "@pixijs-userland/spine-layout";
 
-// Where AssetPack emitted the processed assets + manifest (public/ is served at /).
-const ASSETS_BASE = "/assets/";
+// Where AssetPack emitted the processed assets + manifest. `public/` is served
+// at Vite's base URL (`/` in dev, `/spine-layout-tests/` on GitHub Pages), so
+// resolve against BASE_URL rather than hardcoding a leading slash.
+const ASSETS_BASE = `${import.meta.env.BASE_URL}assets/`;
 
 // Create and initialize the application.
 const app = new Application();
