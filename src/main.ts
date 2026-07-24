@@ -77,6 +77,9 @@ async function main() {
 
   // Expose for quick console tinkering (playState / playEvent / texts / skins).
   (globalThis as unknown as { layout: SpineLayout }).layout = layout;
+
+  // Everything is loaded and composed — drop the loading spinner.
+  document.getElementById("loader")?.remove();
 }
 
 void main();
